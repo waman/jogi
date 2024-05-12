@@ -1,38 +1,70 @@
 use crate::*;
 
-pub fn time<'a>(value: f64, unit: &'a dyn TimeUnit<'a>) -> Box<dyn Time<'a> + 'a > {
-    return Box::new(SimpleLinearQuantity{ _value: value, _unit: unit });
+//********** UNIT **********
+pub enum TimeUnit<'a>{
+    Simple{ _name: &'a str, _symbol: &'a str, _interval: f64 }
 }
 
+impl<'a> LinearUnit<'a> for TimeUnit<'a>{
+    fn name(&self) ->  String {
+        match self {
+            TimeUnit::Simple { _name, _symbol, _interval } => (*_name).to_string(),
+        }
+    }
 
+    fn symbol(&self) ->  String {
+        match self {
+            TimeUnit::Simple { _name, _symbol, _interval } => (*_symbol).to_string(),
+        }
+    }
 
-pub trait TimeUnit<'a>: LinearUnit<'a>{}
-
-impl<'a> dyn TimeUnit<'a> + 'a{
-
-    pub fn of(&'a self, value: f64) -> Box<dyn Time<'a> + 'a> {
-        return time(value, self);
+    fn interval(&self) -> f64 {
+        match self {
+            TimeUnit::Simple { _name, _symbol, _interval } => *_interval,
+        }
     }
 }
 
-impl<'a> TimeUnit<'a> for SimpleLinearUnit<'a>{}
+#[allow(non_upper_case_globals)]
+pub const s: &TimeUnit = &TimeUnit::Simple{ _name: "second", _symbol: "s", _interval: 1. };
 
 #[allow(non_upper_case_globals)]
-pub const s: &dyn TimeUnit = &SimpleLinearUnit{_name: "second", _symbol: "s", _interval: 1.};
+pub const ms: &TimeUnit = &TimeUnit::Simple{ _name: "millisecond", _symbol: "ms", _interval: 0.001 };
 
 #[allow(non_upper_case_globals)]
-pub const h: &dyn TimeUnit = &SimpleLinearUnit{_name: "hour", _symbol: "h", _interval: 3600.};
-
-#[allow(non_upper_case_globals)]
-pub const ms: &dyn TimeUnit = &SimpleLinearUnit{_name: "millisecond", _symbol: "ms", _interval: 0.001};
+pub const h: &TimeUnit = &TimeUnit::Simple{ _name: "hour", _symbol: "h", _interval: 3600. };
 
 
 
-pub trait Time<'a>: LinearQuantity<'a, dyn TimeUnit<'a> + 'a>{}
+//********** QUANTITY **********
+pub struct Time<'a>{
+    _value: f64,
+    _unit: &'a TimeUnit<'a>
+}
 
-impl<'a> Time<'a> for SimpleLinearQuantity<'a, dyn TimeUnit<'a> + 'a>{}
+impl<'a> Time<'a>{
 
+    pub fn value(&self) -> f64 { return self._value; }
+    
+    pub fn unit(&self) -> &'a TimeUnit<'a> { return self._unit; }
 
+    pub fn value_in<U: AsRef<TimeUnit<'a>>>(&self, unit: U) -> f64 {
+        return self.value() * self.unit().interval() / unit.as_ref().interval();
+    }
+}
+
+impl<'a> AsRef<TimeUnit<'a>> for TimeUnit<'a>{
+    fn as_ref(&self) -> &TimeUnit<'a> {
+        return self;
+    }
+}
+
+impl<'a> Into<Time<'a>> for (f64, &'a TimeUnit<'a>){
+
+    fn into(self) -> Time<'a>{
+        return Time { _value: self.0, _unit: self.1 };
+    }
+}
 
 
 #[cfg(test)]
@@ -40,10 +72,10 @@ use crate::test_util::f_eq;
 
 #[test]
 fn test_unit_conversion(){
-    // let three_ms = time(3., ms);
-    let three_ms = ms.of(3.);
+    let three_ms: Time = (3., ms).into();
+    // let three_ms = ms.of(3.);
 
     assert!(f_eq(three_ms.value_in(ms), 3.));
     assert!(f_eq(three_ms.value_in(s), 0.003));
-    assert!(f_eq(three_ms.value_in(h), 0.003 / 3600.));
+    assert!(f_eq(three_ms.value_in(h), 0.003/3600.));
 }
