@@ -9,31 +9,34 @@ pub const SPEED_OF_LIGHT: f64 = 299_792_458.;
 
 
 
-pub trait LinearUnit<'a>: Sized{
-    fn name(&self) -> String;
-    fn symbol(&self) -> String;
-    fn interval(&self) -> f64;
+pub trait LinearUnit<'a>{
+    fn get_name(&self) -> String;
+    fn get_symbol(&self) -> String;
+    fn get_interval(&self) -> f64;
 }
 
 
-pub trait LinearQuantity<'a, U: LinearUnit<'a> + 'a>: Sized{
+pub trait LinearQuantity<'a, U: LinearUnit<'a> + 'a>{
     
-    fn value(&self) -> f64;
-    fn unit(&self) -> &'a U;
+    fn get_value(&self) -> f64;
+    fn get_unit(&'a self) -> &'a U;
 
     // fn value_in<V: AsRef<U>>(&self, unit: V) -> f64 {
     //     return self.value() * self.unit().interval() / unit.as_ref().interval();
     // }
 }
 
-pub struct SimpleLinearQuantity<'a, U: LinearUnit<'a> + 'a>{
-    _value: f64,
-    _unit: &'a U
+pub(crate) enum UnitContainer<'a, U: LinearUnit<'a>>{
+    Ref{ unit: &'a U },
+    Val{ unit: U }
 }
 
-impl<'a, U: LinearUnit<'a>> LinearQuantity<'a, U> for SimpleLinearQuantity<'a, U>{
+impl<'a, U: LinearUnit<'a>> UnitContainer<'a, U>{
 
-    fn value(&self) -> f64 { return self._value; }
-    
-    fn unit(&self) -> &'a U { return self._unit; }
+    pub fn get(&'a self) -> &'a U {
+        match self {
+            UnitContainer::Ref { unit } => *unit,
+            UnitContainer::Val { unit } => unit
+        }
+    }
 }
