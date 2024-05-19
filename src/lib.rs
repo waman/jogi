@@ -31,7 +31,7 @@ pub(crate) enum UnitContainer<'a, U: LinearUnit<'a>>{
     Val{ unit: U }
 }
 
-impl<'a, U: LinearUnit<'a>> UnitContainer<'a, U>{
+impl<'a, U: LinearUnit<'a> + 'a> UnitContainer<'a, U>{
 
     pub fn get(&'a self) -> &'a U {
         match self {

@@ -7,40 +7,33 @@ use crate::unit::time::*;
 
 //********** UNIT **********
 pub enum VelocityUnit<'a>{
-    Simple{ _name: &'a str, _symbol: &'a str, _interval: f64 },
-    Quotient{ _numerator: &'a LengthUnit<'a>, _denominator: &'a TimeUnit<'a> }
-}
-
-impl<'a> VelocityUnit<'a>{
-
-    pub fn new_quotient(n: &'a LengthUnit, d: &'a TimeUnit) -> VelocityUnit<'a>{
-        VelocityUnit::Quotient { _numerator: n, _denominator: d }
-    }
+    Simple{ name: &'a str, symbol: &'a str, interval: f64 },
+    Quotient{ numerator: &'a LengthUnit<'a>, denominator: &'a TimeUnit<'a> }
 }
 
 impl<'a> LinearUnit<'a> for VelocityUnit<'a>{
     
     fn get_name(&self) ->  String {
         match self {
-            VelocityUnit::Simple { _name, _symbol, _interval } => (*_name).to_string(),
-            VelocityUnit::Quotient { _numerator, _denominator } =>
-                format!("{} per {}", _numerator.get_name(), _denominator.get_name()),
+            VelocityUnit::Simple { name, symbol: _, interval: _ } => (*name).to_string(),
+            VelocityUnit::Quotient { numerator, denominator } =>
+                format!("{} per {}", numerator.get_name(), denominator.get_name()),
         }
     }
 
     fn get_symbol(&self) ->  String {
         match self {
-            VelocityUnit::Simple { _name, _symbol, _interval } => (*_symbol).to_string(),
-            VelocityUnit::Quotient { _numerator, _denominator } => 
-                format!("{}/{}", _numerator.get_symbol(), _denominator.get_symbol()),
+            VelocityUnit::Simple { name: _, symbol, interval: _ } => (*symbol).to_string(),
+            VelocityUnit::Quotient { numerator, denominator } => 
+                format!("{}/{}", numerator.get_symbol(), denominator.get_symbol()),
         }
     }
 
     fn get_interval(&self) -> f64 {
         match self {
-            VelocityUnit::Simple { _name, _symbol, _interval } => *_interval,
-            VelocityUnit::Quotient { _numerator, _denominator } => 
-                _numerator.get_interval() / _denominator.get_interval(),
+            VelocityUnit::Simple { name:_, symbol:_, interval } => *interval,
+            VelocityUnit::Quotient { numerator, denominator } => 
+                numerator.get_interval() / denominator.get_interval(),
         }
     }
 }
@@ -50,12 +43,12 @@ impl<'a> Div<&'a TimeUnit<'a>> for &'a LengthUnit<'a>{
     type Output = VelocityUnit<'a>;
 
     fn div(self, rhs: &'a TimeUnit<'a>) -> Self::Output {
-        return VelocityUnit::new_quotient(self, rhs);
+        VelocityUnit::Quotient { numerator: self, denominator: rhs }
     }
 }
 
 #[allow(non_upper_case_globals)]
-pub const c: &VelocityUnit = &VelocityUnit::Simple{ _name: "speed of light", _symbol: "c", _interval: SPEED_OF_LIGHT };
+pub const c: &VelocityUnit = &VelocityUnit::Simple{ name: "speed of light", symbol: "c", interval: SPEED_OF_LIGHT };
 
 
 
@@ -90,17 +83,21 @@ impl<'a> Into<Velocity<'a>> for (f64, VelocityUnit<'a>){
     }
 }
 
-// impl<'a> Div<&'a Time<'a>> for &'a Length<'a>{
+impl<'a> Div<&'a Time<'a>> for &'a Length<'a>{
 
-//     type Output = Velocity<'a>;
+    type Output = Velocity<'a>;
 
-//     fn div(self, rhs: &'a Time<'a>) -> Self::Output {
-//         Velocity{ 
-//             value: self.get_value() / rhs.get_value(), 
-//             unit: UnitContainer::Val { unit: self.get_unit() / rhs.get_unit() }
-//         }
-//     }
-// }
+    fn div(self, rhs: &'a Time<'a>) -> Self::Output {
+        Velocity{ 
+            value: self.get_value() / rhs.get_value(),
+            unit: UnitContainer::Val { unit: self.get_unit() / rhs.get_unit() }
+        }
+    }
+}
+
+pub fn velocity<'a>(value: f64, unit: &'a VelocityUnit<'a>) -> Velocity {
+    (value, unit).into()
+}
 
 
 #[cfg(test)]
@@ -112,14 +109,20 @@ fn test_unit_conversion(){
     // let three_kmh = (km/h).of(3.);
 
     assert!(f_eq(v3km_h.value_in(km/h), 3.));
-    assert!(f_eq(v3km_h.value_in(m/s), 3000./3600.));
-    assert!(f_eq(v3km_h.value_in(c), 3000./3600./SPEED_OF_LIGHT));
+    assert!(f_eq(v3km_h.value_in(m/s), 3000. / 3600.));
+    assert!(f_eq(v3km_h.value_in(c), 3000. / 3600. / SPEED_OF_LIGHT));
 
     let half_c: Velocity = (0.5, c).into();
     assert!(f_eq(half_c.value_in(m/s), SPEED_OF_LIGHT / 2.))
 }
 
-// #[test]
-// fn test_quantity_division(){
+#[test]
+fn test_quantity_division(){
+    let x3km: Length = (3., km).into();
+    let t2h: Time = (2., h).into();
 
-// }
+    let v: Velocity = &x3km / &t2h;
+
+    assert!(f_eq(v.value_in(km/h), 1.5));
+    assert!(f_eq(v.value_in(m/s), 1.5 * 1000. / 3600.));
+}
