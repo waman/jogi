@@ -11,6 +11,17 @@ pub enum VelocityUnit<'a>{
     Quotient{ numerator: &'a LengthUnit<'a>, denominator: &'a TimeUnit<'a> }
 }
 
+impl<'a> VelocityUnit<'a>{
+
+    pub fn new_quantity(&'a self, value: f64) -> Velocity<'a> {
+        Velocity { value, unit: UnitContainer::Ref { unit: self } }
+    }
+
+    pub fn new_owner_quantity(self, value: f64) -> Velocity<'a> {
+        Velocity { value, unit: UnitContainer::Val { unit: self } }
+    }
+}
+
 impl<'a> LinearUnit<'a> for VelocityUnit<'a>{
     
     fn get_name(&self) ->  String {
@@ -58,30 +69,30 @@ pub struct Velocity<'a>{
     unit: UnitContainer<'a, VelocityUnit<'a>>
 }
 
-impl<'a> Velocity<'a>{
+impl<'a> LinearQuantity<'a, VelocityUnit<'a>> for Velocity<'a> {
 
-    pub fn value_in<U: AsRef<VelocityUnit<'a>>>(&self, unit: U) -> f64 {
-        return self.value * self.unit.get().get_interval() / unit.as_ref().get_interval();
-    }
+    fn get_value(&self) -> f64 { self.value }
+
+    fn get_unit(&'a self) -> &'a VelocityUnit<'a> { self.unit.get() }
 }
 
 impl<'a> AsRef<VelocityUnit<'a>> for VelocityUnit<'a>{
     fn as_ref(&self) -> &VelocityUnit<'a> { self }
 }
 
-impl<'a> Into<Velocity<'a>> for (f64, &'a VelocityUnit<'a>){
+// impl<'a> Into<Velocity<'a>> for (f64, &'a VelocityUnit<'a>){
 
-    fn into(self) -> Velocity<'a>{
-        Velocity{ value: self.0, unit: UnitContainer::Ref { unit: self.1 } }
-    }
-}
+//     fn into(self) -> Velocity<'a>{
+//         Velocity{ value: self.0, unit: UnitContainer::Ref { unit: self.1 } }
+//     }
+// }
 
-impl<'a> Into<Velocity<'a>> for (f64, VelocityUnit<'a>){
+// impl<'a> Into<Velocity<'a>> for (f64, VelocityUnit<'a>){
 
-    fn into(self) -> Velocity<'a>{
-        Velocity{ value: self.0, unit: UnitContainer::Val { unit: self.1 } }
-    }
-}
+//     fn into(self) -> Velocity<'a>{
+//         Velocity{ value: self.0, unit: UnitContainer::Val { unit: self.1 } }
+//     }
+// }
 
 impl<'a> Div<&'a Time<'a>> for &'a Length<'a>{
 
@@ -95,34 +106,42 @@ impl<'a> Div<&'a Time<'a>> for &'a Length<'a>{
     }
 }
 
-pub fn velocity<'a>(value: f64, unit: &'a VelocityUnit<'a>) -> Velocity {
-    (value, unit).into()
-}
-
 
 #[cfg(test)]
 use crate::test_util::f_eq;
 
 #[test]
+fn test_quantity_creation(){
+    let half_c = c.new_quantity(0.5);
+    assert!(f_eq(half_c.get_value_in(m/s), SPEED_OF_LIGHT / 2.));
+
+    let v5km_h = (km/h).new_owner_quantity(5.);
+    assert!(f_eq(v5km_h.get_value_in(m/s), 5000. / 3600.));
+}
+
+#[test]
 fn test_unit_conversion(){
-    let v3km_h: Velocity = (3., km/h).into();
-    // let three_kmh = (km/h).of(3.);
+    let v3km_h = (km/h).new_owner_quantity(3.);
+    // let v3km_h: Velocity = (3., km/h).into();
 
-    assert!(f_eq(v3km_h.value_in(km/h), 3.));
-    assert!(f_eq(v3km_h.value_in(m/s), 3000. / 3600.));
-    assert!(f_eq(v3km_h.value_in(c), 3000. / 3600. / SPEED_OF_LIGHT));
+    assert!(f_eq(v3km_h.get_value_in(km/h), 3.));
+    assert!(f_eq(v3km_h.get_value_in(m/s), 3000. / 3600.));
+    assert!(f_eq(v3km_h.get_value_in(c), 3000. / 3600. / SPEED_OF_LIGHT));
 
-    let half_c: Velocity = (0.5, c).into();
-    assert!(f_eq(half_c.value_in(m/s), SPEED_OF_LIGHT / 2.))
+    let half_c = c.new_quantity(0.5);
+    // let half_c: Velocity = (0.5, c).into();
+    assert!(f_eq(half_c.get_value_in(m/s), SPEED_OF_LIGHT / 2.))
 }
 
 #[test]
 fn test_quantity_division(){
-    let x3km: Length = (3., km).into();
-    let t2h: Time = (2., h).into();
+    let x3km = km.new_quantity(3.);
+    // let x3km: Length = (3., km).into();
+    let t2h = h.new_quantity(2.);
+    // let t2h: Time = (2., h).into();
 
     let v: Velocity = &x3km / &t2h;
 
-    assert!(f_eq(v.value_in(km/h), 1.5));
-    assert!(f_eq(v.value_in(m/s), 1.5 * 1000. / 3600.));
+    assert!(f_eq(v.get_value_in(km/h), 1.5));
+    assert!(f_eq(v.get_value_in(m/s), 1.5 * 1000. / 3600.));
 }

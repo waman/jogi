@@ -5,7 +5,15 @@ pub enum LengthUnit<'a>{
     Simple{ name: &'a str, symbol: &'a str, interval: f64 }
 }
 
+impl<'a> LengthUnit<'a>{
+
+    pub fn new_quantity(&'a self, value: f64) -> Length<'a> {
+        Length { value, unit: UnitContainer::Ref { unit: self } }
+    }
+}
+
 impl<'a> LinearUnit<'a> for LengthUnit<'a>{
+
     fn get_name(&self) -> String {
         match self {
             LengthUnit::Simple { name, symbol:_, interval:_ } => (*name).to_string(),
@@ -44,13 +52,6 @@ pub struct Length<'a>{
     unit: UnitContainer<'a, LengthUnit<'a>>
 }
 
-impl<'a> Length<'a>{
-
-    pub fn get_value_in<U: AsRef<LengthUnit<'a>>>(&self, unit: U) -> f64 {
-        self.value * self.unit.get().get_interval() / unit.as_ref().get_interval()
-    }
-}
-
 impl<'a> AsRef<LengthUnit<'a>> for LengthUnit<'a>{
     fn as_ref(&self) -> &LengthUnit<'a> { self }
 }
@@ -62,19 +63,13 @@ impl<'a> LinearQuantity<'a, LengthUnit<'a>> for Length<'a>{
     fn get_unit(&'a self) -> &'a LengthUnit<'a> { self.unit.get() }
 }
 
-impl<'a> Into<Length<'a>> for (f64, &'a LengthUnit<'a>){
-
-    fn into(self) -> Length<'a>{
-        Length { value: self.0, unit: UnitContainer::Ref { unit: self.1 } }
-    }
-}
-
 #[cfg(test)]
 use crate::test_util::f_eq;
 
 #[test]
 fn test_unit_conversion(){
-    let x3cm: Length = (3., cm).into();
+    let x3cm = cm.new_quantity(3.);
+    // let x3cm: Length = (3., cm).into();
 
     assert!(f_eq(x3cm.get_value_in(cm), 3.));
     assert!(f_eq(x3cm.get_value_in(m), 0.03));

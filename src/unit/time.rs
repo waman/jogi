@@ -5,6 +5,13 @@ pub enum TimeUnit<'a>{
     Simple{ name: &'a str, symbol: &'a str, interval: f64 }
 }
 
+impl<'a> TimeUnit<'a>{
+
+    pub fn new_quantity(&'a self, value: f64) -> Time<'a> {
+        Time { value, unit: UnitContainer::Ref { unit: self } }
+    }
+}
+
 impl<'a> LinearUnit<'a> for TimeUnit<'a>{
     fn get_name(&self) ->  String {
         match self {
@@ -42,17 +49,6 @@ pub struct Time<'a>{
     unit: UnitContainer<'a, TimeUnit<'a>>
 }
 
-impl<'a> Time<'a>{
-
-    pub fn value_in<U: AsRef<TimeUnit<'a>>>(&self, unit: U) -> f64 {
-        self.value * self.unit.get().get_interval() / unit.as_ref().get_interval()
-    }
-}
-
-impl<'a> AsRef<TimeUnit<'a>> for TimeUnit<'a>{
-    fn as_ref(&self) -> &TimeUnit<'a> { self }
-}
-
 impl<'a> LinearQuantity<'a, TimeUnit<'a>> for Time<'a>{
 
     fn get_value(&self) -> f64 { self.value }
@@ -60,11 +56,8 @@ impl<'a> LinearQuantity<'a, TimeUnit<'a>> for Time<'a>{
     fn get_unit(&'a self) -> &'a TimeUnit<'a> { self.unit.get() }
 }
 
-impl<'a> Into<Time<'a>> for (f64, &'a TimeUnit<'a>){
-
-    fn into(self) -> Time<'a>{ 
-        Time { value: self.0, unit: UnitContainer::Ref { unit: self.1 } }
-     }
+impl<'a> AsRef<TimeUnit<'a>> for TimeUnit<'a>{
+    fn as_ref(&self) -> &TimeUnit<'a> { self }
 }
 
 
@@ -73,10 +66,10 @@ use crate::test_util::f_eq;
 
 #[test]
 fn test_unit_conversion(){
-    let t3ms: Time = (3., ms).into();
-    // let three_ms = ms.of(3.);
+    let t3ms = ms.new_quantity(3.);
+    // let t3ms: Time = (3., ms).into();
 
-    assert!(f_eq(t3ms.value_in(ms), 3.));
-    assert!(f_eq(t3ms.value_in(s), 0.003));
-    assert!(f_eq(t3ms.value_in(h), 0.003/3600.));
+    assert!(f_eq(t3ms.get_value_in(ms), 3.));
+    assert!(f_eq(t3ms.get_value_in(s), 0.003));
+    assert!(f_eq(t3ms.get_value_in(h), 0.003/3600.));
 }

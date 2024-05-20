@@ -21,9 +21,9 @@ pub trait LinearQuantity<'a, U: LinearUnit<'a> + 'a>{
     fn get_value(&self) -> f64;
     fn get_unit(&'a self) -> &'a U;
 
-    // fn value_in<V: AsRef<U>>(&self, unit: V) -> f64 {
-    //     return self.value() * self.unit().interval() / unit.as_ref().interval();
-    // }
+    fn get_value_in<V: AsRef<U>>(&'a self, unit: V) -> f64 {
+        self.get_value() * self.get_unit().get_interval() / unit.as_ref().get_interval()
+    }
 }
 
 pub(crate) enum UnitContainer<'a, U: LinearUnit<'a>>{
